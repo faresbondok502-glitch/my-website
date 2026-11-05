@@ -705,11 +705,14 @@ function startNet(){
   if(peer||!me)return;
   if(typeof Peer==='undefined'){setNet('err','يلزم اتصال بالإنترنت');return}
   const my=++gen;setNet('wait','جارٍ الاتصال…');
-  const p=peer=new Peer(uidOf(me.key),{debug:0});
+  const p=peer=new Peer(uidOf(me.key),{debug:2});
   p.on('open',()=>{if(my!==gen)return;nameTry=0;setNet('on','متصل');connectAll();clearInterval(retryT);retryT=setInterval(connectAll,12000)});
   p.on('connection',c=>{if(my===gen)onIncoming(c)});
   p.on('disconnected',()=>{if(my===gen){setNet('wait','انقطع الاتصال…');try{p.reconnect()}catch(e){}}});
   p.on('error',e=>{
+    console.warn('[Ruqa][PeerJS] peer error:',e?.type,e);
+    if(e?.type==='peer-unavailable')toast('المستخدم غير ظاهر على خادم الاتصال (peer-unavailable)');
+    else if(e?.type==='webrtc')toast('فشل اتصال WebRTC بين الجهازين');
     if(my!==gen)return;
     if(e.type==='unavailable-id'){
       if(++nameTry<=4){setNet('wait','جارٍ الاتصال…');restartNet(3500)}
@@ -751,7 +754,10 @@ function onIncoming(c){
     if(c._key&&links.get(c._key)===c){links.delete(c._key);refreshOnline(c._key)}
     const i=reqs.findIndex(r=>r.conn===c);if(i>=0){reqs.splice(i,1);renderList()}
   });
-  c.on('error',()=>{});
+  c.on('error',e=>{
+    console.warn('[Ruqa][PeerJS] incoming connection error:',e?.type,e);
+    toast('خطأ في الاتصال الوارد: '+(e?.type||'غير معروف'));
+  });
 }
 function handleHello(c,d){
   const bad=()=>{try{c.close()}catch(e){}};
